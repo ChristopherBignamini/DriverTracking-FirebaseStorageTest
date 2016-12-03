@@ -9,6 +9,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.widget.Button;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -30,11 +31,22 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private static final int MY_PERMISSIONS_READ_EXTERNAL_STORAGE = 1;
+    private Button mRecordButton;
+    private Button mPlayMyRecordButton;
+    private Button mSendButton;
+    private Button mPlayOtherRecordButton;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mRecordButton = (Button) findViewById(R.id.record_button);
+        mPlayMyRecordButton = (Button) findViewById(R.id.play_my_record_button);
+        mSendButton = (Button) findViewById(R.id.send_button);
+        mPlayOtherRecordButton = (Button) findViewById(R.id.play_other_record_button);
+
 
         // Tracking session name (could be like c1= contact 1 name, etc)
         String trackingSession = new String("tracking_c1_c2/");
