@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "804999151119",
+    "firebase_url": "https://fir-storagetest-5f200.firebaseio.com",
+    "project_id": "fir-storagetest-5f200",
+    "storage_bucket": "fir-storagetest-5f200.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:804999151119:android:52166991b35e5f5b",
+        "android_client_info": {
+          "package_name": "com.commutingcoder.firebasestoragetest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "804999151119-5qo7k92tudj8mdiigupi6gdmj38vg20r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAjWdB62iYPu567_YncIkQTq92KPbSM74"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
