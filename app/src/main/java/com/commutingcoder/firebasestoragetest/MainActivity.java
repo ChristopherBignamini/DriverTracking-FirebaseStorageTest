@@ -1,12 +1,10 @@
 package com.commutingcoder.firebasestoragetest;
 
-import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -35,9 +33,8 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final int MY_PERMISSIONS_READ_EXTERNAL_STORAGE = 1;
-    private static final int MY_PERMISSIONS_RECORD_AUDIO = 2;
-    private static final int MY_PERMISSIONS_WRITE_EXTERNAL_STORAGE = 3;
+    private static final int MY_PERMISSIONS_RECORD_AUDIO = 1;
+    private static final String KEY_MY_AUDIO_STATUS = "my_audio_status";
     private Button mRecordButton;
     private Button mPlayMyRecordButton;
     private Button mSendButton;
@@ -47,15 +44,18 @@ public class MainActivity extends AppCompatActivity {
     private MediaRecorder mMediaRecorder;
     private final String mMyAudioFileName = "my_audio";
     private final String mOtherAudioFileName = "other_audio";
-    private final String audioFileStoragePath = "/data/data/com.bignerdranch.android.firebasestoragetest/databases";
-    private final String mMyAudioFileFullName = audioFileStoragePath+"/"+mMyAudioFileName;
-    private final String mOtherAudioFileFullName = audioFileStoragePath+"/"+mOtherAudioFileName;
     private MediaPlayer mMediaPlayer;// TODO: is it better to use local variable or data members?
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // We set this to true every time a new recorded message to be sent is available
+        mIsMyAudioAvailable = false;
+        if(savedInstanceState != null) {
+            mIsMyAudioAvailable = savedInstanceState.getBoolean(KEY_MY_AUDIO_STATUS);
+        }
 
         // Setup UI elements
         mRecordButton = (Button) findViewById(R.id.record_button);
@@ -72,12 +72,9 @@ public class MainActivity extends AppCompatActivity {
         final StorageReference storageRefUp = topStorageRef.child(trackingSession+"audio_c1");
         final StorageReference storageRefDown = topStorageRef.child(trackingSession+"audio_c2");
 
-        // Upload/Download file path and names
-        // TODO: store audio files in /data/data/ com.bignerdranch.android.firebasestoragetest
-        final String externalStoragePath = Environment.getExternalStorageDirectory().getAbsolutePath();
-
-        // We set this to true every time we record a new message to be shared
-        mIsMyAudioAvailable = false;
+        // Upload/Download file instances
+        final File myAudioFile = new File(getApplicationContext().getFilesDir(), mMyAudioFileName);
+        final File otherAudioFile = new File(getApplicationContext().getFilesDir(), mOtherAudioFileName);
 
         // Ask required permissions
         // TODO: these should be asked only when needed, find better design solution
@@ -102,55 +99,6 @@ public class MainActivity extends AppCompatActivity {
                 ActivityCompat.requestPermissions(this,
                         new String[]{android.Manifest.permission.RECORD_AUDIO},
                         MY_PERMISSIONS_RECORD_AUDIO);
-
-            }
-        }
-        // TODO: check for best way to handle this, particularly first run aftewe install fails!!
-        // Here, thisActivity is the current activity
-        if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(getParent(),
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
-
-                // Show an expanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-
-            } else {
-
-                // No explanation needed, we can request the permission.
-
-                ActivityCompat.requestPermissions(getParent(),
-                        new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_READ_EXTERNAL_STORAGE);
-
-            }
-        }
-        // TODO: check for best way to handle this, particularly first run aftewe install fails!!
-        // TODO: can we unify permission requests?
-        // Here, thisActivity is the current activity
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-
-                // Show an expanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-
-            } else {
-
-                // No explanation needed, we can request the permission.
-
-                ActivityCompat.requestPermissions(this,
-                        new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_WRITE_EXTERNAL_STORAGE);
             }
         }
 
@@ -164,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                 if(mIsRecordingActive == false) {
 
                     // TODO: isn't file creation performed by mediarecorder?
-                    final File myAudioFile = new File(audioFileStoragePath, mMyAudioFileName);
+                    // TODO: do this create a new file on disk every time?
                     if (!myAudioFile.exists()) {
                         try {
                             myAudioFile.createNewFile();
@@ -178,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
                     mMediaRecorder = new MediaRecorder();
                     mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
                     mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-                    mMediaRecorder.setOutputFile(mMyAudioFileFullName);
+                    mMediaRecorder.setOutputFile(myAudioFile.getAbsolutePath());
                     mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
                     try {
                         Log.d(TAG, "Prepare record");
@@ -215,12 +163,11 @@ public class MainActivity extends AppCompatActivity {
 
                 if (mIsPlayingActive == false) {
 
-                    File file = new File(mMyAudioFileFullName);
-                    if (file.exists()) {
+                    if (myAudioFile.exists()) {
                         Log.d(TAG, "File exist, setup reproduction");
                         mMediaPlayer = new MediaPlayer();
                         try {
-                            mMediaPlayer.setDataSource(mMyAudioFileFullName);
+                            mMediaPlayer.setDataSource(myAudioFile.getAbsolutePath());
                             mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
                             Log.e(TAG, "Play my audio exception: " + ioException.toString());
@@ -247,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (mIsMyAudioAvailable == true) {
 
-                    Uri file = Uri.fromFile(new File(mMyAudioFileFullName));
+                    Uri file = Uri.fromFile(myAudioFile);
                     UploadTask uploadTask = storageRefUp.putFile(file);
                     uploadTask.addOnFailureListener(new OnFailureListener() {
                         @Override
@@ -282,12 +229,11 @@ public class MainActivity extends AppCompatActivity {
                 // TODO: add check for file availability?
                 if (mIsPlayingActive == false) {
 
-                    File file = new File(mOtherAudioFileFullName);
-                    if (file.exists()) {
+                    if (otherAudioFile.exists()) {
                         Log.d(TAG, "File exist, setup reproduction");
                         mMediaPlayer = new MediaPlayer();
                         try {
-                            mMediaPlayer.setDataSource(mOtherAudioFileFullName);
+                            mMediaPlayer.setDataSource(otherAudioFile.getAbsolutePath());
                             mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
                             Log.e(TAG, "Play my audio exception: " + ioException.toString());
@@ -318,7 +264,6 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     // TODO: I don't like to put everything within Exc catching block
                     // TODO use uri instead?
-                    final File otherAudioFile = new File(audioFileStoragePath, mOtherAudioFileName);
                     if (!otherAudioFile.exists()) {
                         otherAudioFile.createNewFile();
                     }
@@ -342,44 +287,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // TODO: debug, remove!
-//        // Upload local file
-//        Uri file = Uri.fromFile(new File("/storage/emulated/0/DCIM/Camera/IMG_20161203_004157.jpg"));
-//        UploadTask uploadTask = storageRefUp.putFile(file);
-//        uploadTask.addOnFailureListener(new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception e) {
-//                Log.d(TAG,"Upload failed");
-//            }
-//        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-//            @Override
-//            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-//                Log.d(TAG,"Upload completed");
-//            }
-//        });
-//
-//        // Download file from remote storage
-//        StorageReference storageReferenceDown =
-//                topStorageRef.child(trackingSession+"7f0b5b7e-5067-459d-8572-0e00f9ea60a3.jpg");
-//        try {
-//            // TODO: I don't like to put everything within Exc catching block
-//            final File localFile = File.createTempFile("image2", "jpg");
-//            storageReferenceDown.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-//                @Override
-//                public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-//                    Log.d(TAG,"Download completed in " + localFile.getAbsoluteFile());
-//                }
-//            }).addOnFailureListener(new OnFailureListener() {
-//                @Override
-//                public void onFailure(@NonNull Exception e) {
-//                    Log.d(TAG,"Download failed");
-//                }
-//            });
-//
-//        } catch (IOException ioException) {
-//            Log.d(TAG,"Exception: " + ioException.toString());
-//        }
+    }
 
-
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(KEY_MY_AUDIO_STATUS,mIsMyAudioAvailable);
     }
 }
