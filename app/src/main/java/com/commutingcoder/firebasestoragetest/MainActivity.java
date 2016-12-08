@@ -1,5 +1,6 @@
 package com.commutingcoder.firebasestoragetest;
 
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private MediaRecorder mMediaRecorder;
     private final String mMyAudioFileName = "my_audio";
     private final String mOtherAudioFileName = "other_audio";
+    private final String mPreferencesFileName = "preferences";
     private MediaPlayer mMediaPlayer;// TODO: is it better to use local variable or data members?
 
     @Override
@@ -53,8 +55,14 @@ public class MainActivity extends AppCompatActivity {
 
         // We set this to true every time a new recorded message to be sent is available
         mIsMyAudioAvailable = false;
-        if(savedInstanceState != null) {
-            mIsMyAudioAvailable = savedInstanceState.getBoolean(KEY_MY_AUDIO_STATUS);
+        Log.d(TAG,"onCreate");
+        SharedPreferences preferences = getSharedPreferences(mPreferencesFileName,0);
+        if (preferences.contains(KEY_MY_AUDIO_STATUS)) {
+            Log.d(TAG, "My audio is available in preferences after recreation");
+            mIsMyAudioAvailable = preferences.getBoolean(KEY_MY_AUDIO_STATUS, false);
+            if (mIsMyAudioAvailable) {
+                Log.d(TAG, "My audio is available is true");
+            }
         }
 
         // Setup UI elements
@@ -212,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
                     mIsMyAudioAvailable = false;
 
                 } else {
-                    Toast.makeText(getApplicationContext(),"No new audio available", Toast.LENGTH_LONG);
+                    Toast.makeText(getApplicationContext(),"No new audio available", Toast.LENGTH_LONG).show();
                     Log.d(TAG,"Send audio: no new audio available");
                 }
             }
@@ -288,10 +296,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-
+    
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putBoolean(KEY_MY_AUDIO_STATUS,mIsMyAudioAvailable);
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG,"onPause");
+        SharedPreferences.Editor editor = getSharedPreferences(mPreferencesFileName,0).edit();
+        editor.putBoolean(KEY_MY_AUDIO_STATUS,mIsMyAudioAvailable);
+        editor.commit();
     }
 }
