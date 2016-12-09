@@ -46,7 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private final String mMyAudioFileName = "my_audio";
     private final String mOtherAudioFileName = "other_audio";
     private final String mPreferencesFileName = "preferences";
-    private MediaPlayer mMediaPlayer;// TODO: is it better to use local variable or data members?
+    private MediaPlayer mMyMediaPlayer;// TODO: is it better to use local variable or data members?
+    private MediaPlayer mOtherMediaPlayer;// TODO: is it better to use local variable or data members?
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,42 +167,42 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                if (mMediaPlayer==null) {
+                if (mMyMediaPlayer ==null) {
 
                     // TODO: I don't know if this is the best solution, I'm not using the mp pointer
                     // TODO: Check again lifecycle steps of media player, are we correctly managing the resoources?
-                    mMediaPlayer = new MediaPlayer();
+                    mMyMediaPlayer = new MediaPlayer();
                     Log.d(TAG, "MediaPlayer is null");
-                    mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                    mMyMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                         @Override
                         public void onCompletion(MediaPlayer mp) {
                             Log.d(TAG, "MediaPlayer OnCompletionListener");
-                            mediaPlayerStopAndRelease();
+                            myMediaPlayerStopAndRelease();
                         }
                     });
                 }
 
-                if (!mMediaPlayer.isPlaying()) {
+                if (!mMyMediaPlayer.isPlaying()) {
 
                     if (myAudioFile.exists()) {
                         Log.d(TAG, "File exist, setup reproduction");
                         try {
-                            mMediaPlayer.setDataSource(myAudioFile.getAbsolutePath());
-                            mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
+                            mMyMediaPlayer.setDataSource(myAudioFile.getAbsolutePath());
+                            mMyMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
-                            // TODO: should we release and nullify mMediaPlayer here?
+                            // TODO: should we release and nullify mMyMediaPlayer here?
                             Log.e(TAG, "Play my audio exception: " + ioException.getMessage());
                         } catch (IllegalStateException isException) {
                             Log.e(TAG, "Play my audio exception: " + isException.getMessage());
                         }
                         Log.d(TAG, "Start reproduction");
-                        mMediaPlayer.start();
+                        mMyMediaPlayer.start();
                     } else {
                         Toast.makeText(getApplicationContext(),
                                 "My audio file not available", Toast.LENGTH_LONG).show();
                     }
                 } else {
-                    mediaPlayerStopAndRelease();
+                    myMediaPlayerStopAndRelease();
                 }
             }
         });
@@ -238,39 +239,47 @@ public class MainActivity extends AppCompatActivity {
 
         mPlayOtherRecordButton.setOnClickListener(new View.OnClickListener() {
 
-            // TODO: factorize playing part ina a general onClickListener
-            private boolean mIsPlayingActive = false;
-
+            // TODO: refactor playing in a single class
             @Override
             public void onClick(View v) {
 
-                // TODO: add check for file availability?
-                if (mIsPlayingActive == false) {
+                if (mOtherMediaPlayer ==null) {
+
+                    // TODO: I don't know if this is the best solution, I'm not using the mp pointer
+                    // TODO: Check again lifecycle steps of media player, are we correctly managing the resoources?
+                    mOtherMediaPlayer = new MediaPlayer();
+                    Log.d(TAG, "MediaPlayer is null");
+                    mOtherMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                        @Override
+                        public void onCompletion(MediaPlayer mp) {
+                            Log.d(TAG, "MediaPlayer OnCompletionListener");
+                            myMediaPlayerStopAndRelease();
+                        }
+                    });
+                }
+
+                if (!mOtherMediaPlayer.isPlaying()) {
 
                     if (otherAudioFile.exists()) {
-                        Log.d(TAG, "Other audio file exist, setup reproduction");
-                        mMediaPlayer = new MediaPlayer();
+                        Log.d(TAG, "File exist, setup reproduction");
                         try {
-                            mMediaPlayer.setDataSource(otherAudioFile.getAbsolutePath());
-                            mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
+                            mOtherMediaPlayer.setDataSource(otherAudioFile.getAbsolutePath());
+                            mOtherMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
-                            Log.e(TAG, "Play other audio exception: " + ioException.toString());
+                            // TODO: should we release and nullify mMyMediaPlayer here?
+                            Log.e(TAG, "Play other audio exception: " + ioException.getMessage());
+                        } catch (IllegalStateException isException) {
+                            Log.e(TAG, "Play other audio exception: " + isException.getMessage());
                         }
                         Log.d(TAG, "Start reproduction");
-                        mMediaPlayer.start();
-                        Log.d(TAG, "Reproduction completed");
+                        mOtherMediaPlayer.start();
                     } else {
                         Toast.makeText(getApplicationContext(),
                                 "Other audio file not available", Toast.LENGTH_LONG).show();
                     }
-                    mIsPlayingActive = true;
                 } else {
-                    mMediaPlayer.release();
-                    mMediaPlayer = null;
-                    mIsPlayingActive = false;
+                    otherMediaPlayerStopAndRelease();
                 }
-
-
             }
         });
 
@@ -307,11 +316,19 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void mediaPlayerStopAndRelease() {
-        Log.d(TAG, "Interrupting reproduction");
-        mMediaPlayer.stop();
-        mMediaPlayer.release();
-        mMediaPlayer = null;
+    private void myMediaPlayerStopAndRelease() {
+        Log.d(TAG, "Interrupting my reproduction");
+        mMyMediaPlayer.stop();
+        mMyMediaPlayer.release();
+        mMyMediaPlayer = null;
+    }
+
+    // TODO: refactor these two methods
+    private void otherMediaPlayerStopAndRelease() {
+        Log.d(TAG, "Interrupting other reproduction");
+        mOtherMediaPlayer.stop();
+        mOtherMediaPlayer.release();
+        mOtherMediaPlayer = null;
     }
 
     @Override
@@ -326,8 +343,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Stop and release audio
         // TODO: this is not the best solution, we could let the audio play during rotation..
-        if(mMediaPlayer!=null) {
-            mediaPlayerStopAndRelease();
+        if(mMyMediaPlayer !=null) {
+            myMediaPlayerStopAndRelease();
+        }
+        if(mOtherMediaPlayer !=null) {
+            otherMediaPlayerStopAndRelease();
         }
     }
 
