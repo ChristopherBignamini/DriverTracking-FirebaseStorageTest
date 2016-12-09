@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mSendButton;
     private Button mPlayOtherRecordButton;
     private Button mReceiveButton;
-    private boolean mIsMyAudioAvailable;
+    private boolean mIsMyAudioAvailable;// TODO rename variable, state that new audio must be sent
     private MediaRecorder mMediaRecorder;
     private final String mMyAudioFileName = "my_audio";
     private final String mOtherAudioFileName = "other_audio";
@@ -161,37 +161,47 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         mPlayMyRecordButton.setOnClickListener(new View.OnClickListener() {
-
-            private boolean mIsPlayingActive = false;
 
             @Override
             public void onClick(View v) {
 
-                if (mIsPlayingActive == false) {
+                if (mMediaPlayer==null) {
+
+                    // TODO: I don't know if this is the best solution, I'm not using the mp pointer
+                    // TODO: Check again lifecycle steps of media player, are we correctly managing the resoources?
+                    mMediaPlayer = new MediaPlayer();
+                    Log.d(TAG, "MediaPlayer is null");
+                    mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                        @Override
+                        public void onCompletion(MediaPlayer mp) {
+                            Log.d(TAG, "MediaPlayer OnCompletionListener");
+                            mediaPlayerStopAndRelease();
+                        }
+                    });
+                }
+
+                if (!mMediaPlayer.isPlaying()) {
 
                     if (myAudioFile.exists()) {
                         Log.d(TAG, "File exist, setup reproduction");
-                        mMediaPlayer = new MediaPlayer();
                         try {
                             mMediaPlayer.setDataSource(myAudioFile.getAbsolutePath());
                             mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
-                            Log.e(TAG, "Play my audio exception: " + ioException.toString());
+                            // TODO: should we release and nullify mMediaPlayer here?
+                            Log.e(TAG, "Play my audio exception: " + ioException.getMessage());
+                        } catch (IllegalStateException isException) {
+                            Log.e(TAG, "Play my audio exception: " + isException.getMessage());
                         }
                         Log.d(TAG, "Start reproduction");
                         mMediaPlayer.start();
-                        Log.d(TAG, "Reproduction completed");
                     } else {
                         Toast.makeText(getApplicationContext(),
                                 "My audio file not available", Toast.LENGTH_LONG).show();
                     }
-                    mIsPlayingActive = true;
                 } else {
-                    mMediaPlayer.release();
-                    mMediaPlayer = null;
-                    mIsPlayingActive = false;
+                    mediaPlayerStopAndRelease();
                 }
             }
         });
@@ -238,20 +248,20 @@ public class MainActivity extends AppCompatActivity {
                 if (mIsPlayingActive == false) {
 
                     if (otherAudioFile.exists()) {
-                        Log.d(TAG, "File exist, setup reproduction");
+                        Log.d(TAG, "Other audio file exist, setup reproduction");
                         mMediaPlayer = new MediaPlayer();
                         try {
                             mMediaPlayer.setDataSource(otherAudioFile.getAbsolutePath());
                             mMediaPlayer.prepare();// TODO: have a look to documentation for asyncronous preparation step
                         } catch (IOException ioException) {
-                            Log.e(TAG, "Play my audio exception: " + ioException.toString());
+                            Log.e(TAG, "Play other audio exception: " + ioException.toString());
                         }
                         Log.d(TAG, "Start reproduction");
                         mMediaPlayer.start();
                         Log.d(TAG, "Reproduction completed");
                     } else {
                         Toast.makeText(getApplicationContext(),
-                                "My audio file not available", Toast.LENGTH_LONG).show();
+                                "Other audio file not available", Toast.LENGTH_LONG).show();
                     }
                     mIsPlayingActive = true;
                 } else {
@@ -296,13 +306,29 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-    
+
+    private void mediaPlayerStopAndRelease() {
+        Log.d(TAG, "Interrupting reproduction");
+        mMediaPlayer.stop();
+        mMediaPlayer.release();
+        mMediaPlayer = null;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(TAG,"onPause");
+
+        // Save new my audio availability status
         SharedPreferences.Editor editor = getSharedPreferences(mPreferencesFileName,0).edit();
         editor.putBoolean(KEY_MY_AUDIO_STATUS,mIsMyAudioAvailable);
         editor.commit();
+
+        // Stop and release audio
+        // TODO: this is not the best solution, we could let the audio play during rotation..
+        if(mMediaPlayer!=null) {
+            mediaPlayerStopAndRelease();
+        }
     }
+
 }
